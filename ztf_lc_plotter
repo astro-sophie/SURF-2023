@@ -1,0 +1,49 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import os
+from astropy.coordinates import SkyCoord
+from astroquery.skyview import SkyView
+from astropy.coordinates import get_icrs_coordinates
+from astropy.coordinates.name_resolve import NameResolveError
+from astropy.io import ascii
+from astropy import table
+import astropy.units as u
+import re
+import statistics
+from ztfquery import *
+from ztfquery import lightcurve
+
+try:
+    target = input('Target Common Name: ')
+    source_coordinates = get_icrs_coordinates(target)       #this requires that SIMBAD be up and working...
+    print(source_coordinates)
+    print("\n")
+except NameResolveError:
+    print("\n"+"Could not find target by name provided. Try Sky Coordinates.\n")
+    print("Input as ICRS: RA,Dec  (in Decimal Degrees, with no space)")
+    input_coord_string = input('RA,Dec: ')
+    input_coord_split = re.split("\s|[,]|[,\s]",input_coord_string)
+    ra = float(input_coord_split[0])
+    dec = float(input_coord_split[1])
+    source_coordinates = SkyCoord(ra,dec,frame='icrs',unit='deg')
+    target = input('Desired object name for output files: ')
+    target_coordinates = str(ra)+" "+str(dec)
+    print(source_coordinates)
+    print("\n")
+
+ra = source_coordinates.ra.degree
+dec = source_coordinates.dec.degree
+query = lightcurve.LCQuery.query_position(ra=ra, dec=dec, radius_arcsec = 5, bad_catflags_mask = 65535) #32768)
+data = query.data
+oid = statistics.mode(data['oid'])
+df = data.loc[data['oid'] == oid]
+df.reset_index(inplace=True, drop=True)
+time = [(time - 2457000) for time in df['hjd']]
+plt.figure(figsize=(10,4))
+plt.plot(time, df['mag'],color='black',linewidth=1)
+plt.errorbar(x=time,y=df['mag'],yerr=df['magerr'],xerr=None,fmt='.',c='black',elinewidth=0.5,capsize=2,ecolor='black',markersize=3)
+plt.title("ZTF Light Curve for " + str(target))
+plt.xlabel("Days - 2457000 (HJD)")
+plt.ylabel("Magnitude")
+plt.show()
