@@ -251,57 +251,35 @@ def find_spikes(nums):
 
 ######## BEGIN MAIN PROGRAM #################
 #Define target and obtain DSS image from common name or coordinates.
-try :
+try:
     target = input('Target Common Name: ')
     target_coordinates = target
-    source_coordinates = get_icrs_coordinates(target)       #this requires that SIMBAD be up and working...
-    print(source_coordinates)
-    print("\n")
+    source_coordinates = get_icrs_coordinates(target)
+    # input_coord_string = input('RA,Dec: ')
+    # input_coord_split = re.split("\s|[,]|[,\s]",input_coord_string)
+    # ra = float(input_coord_split[0])
+    # dec = float(input_coord_split[1])
+    # source_coordinates = SkyCoord(ra,dec,frame='icrs',unit='deg')
+    # target = input('Desired object name for output files: ')
+    # target_coordinates = str(ra)+" "+str(dec)
+    query = lightcurve.LCQuery.query_position(ra=source_coordinates.ra.value, dec=source_coordinates.dec.value, radius_arcsec = 5, bandname = "r", bad_catflags_mask = 65535) #queries ZTF data
+    data = query.data
+    oid = statistics.mode(data['oid']) #have data in 5" radius, this makes sure we only get the main source's data
+    ztf_df = data.loc[data['oid'] == oid]
+    ztf_df.reset_index(inplace=True, drop=True)
+    print("Mean magnitude is", str(np.mean(ztf_df['mag']))) 
 
 except NameResolveError:
-    print("\n"+"Could not find target by name provided. Try Sky Coordinates.\n")
-    print("Input as ICRS: RA,Dec  (in Decimal Degrees, with no space)")
-
-    input_coord_string = input('RA,Dec: ')
-    input_coord_split = re.split("\s|[,]|[,\s]",input_coord_string)
-
-    ra = float(input_coord_split[0])
-    dec = float(input_coord_split[1])
-
-    source_coordinates = SkyCoord(ra,dec,frame='icrs',unit='deg')
-
-    target = input('Desired object name for output files: ')
-    target_coordinates = str(ra)+" "+str(dec)
-
-    print(source_coordinates)
-    print("\n")
-
-# try:
-#     input_coord_string = input('RA,Dec: ')
-#     input_coord_split = re.split("\s|[,]|[,\s]",input_coord_string)
-#     ra = float(input_coord_split[0])
-#     dec = float(input_coord_split[1])
-#     source_coordinates = SkyCoord(ra,dec,frame='icrs',unit='deg')
-#     target = input('Desired object name for output files: ')
-#     target_coordinates = str(ra)+" "+str(dec)
-#     query = lightcurve.LCQuery.query_position(ra=ra, dec=dec, radius_arcsec = 5, bandname = "r", bad_catflags_mask = 65535) #queries ZTF data
-#     data = query.data
-#     oid = statistics.mode(data['oid']) #have data in 5" radius, this makes sure we only get the main source's data
-#     ztf_df = data.loc[data['oid'] == oid]
-#     ztf_df.reset_index(inplace=True, drop=True)
-#     print("Mean magnitude is", str(np.mean(ztf_df['mag']))) 
-
-# except NameResolveError:
-#     target = input('Target Common Name: ')
-#     source_coordinates = get_icrs_coordinates(target) #this requires that SIMBAD be up and working...
-#     ra = source_coordinates.ra.degree
-#     dec = source_coordinates.dec.degree
-#     query = lightcurve.LCQuery.query_position(ra=ra, dec=dec, radius_arcsec = 5, bandname = "r", bad_catflags_mask = 65535) #32768)
-#     data = query.data
-#     oid = statistics.mode(data['oid'])
-#     ztf_df = data.loc[data['oid'] == oid]
-#     ztf_df.reset_index(inplace=True, drop=True)
-#     print("Mean magnitude for", str(np.mean(ztf_df['mag'])))
+    target = input('Target Common Name: ')
+    source_coordinates = get_icrs_coordinates(target) #this requires that SIMBAD be up and working...
+    ra = source_coordinates.ra.degree
+    dec = source_coordinates.dec.degree
+    query = lightcurve.LCQuery.query_position(ra=ra, dec=dec, radius_arcsec = 5, bandname = "r", bad_catflags_mask = 65535) #32768)
+    data = query.data
+    oid = statistics.mode(data['oid'])
+    ztf_df = data.loc[data['oid'] == oid]
+    ztf_df.reset_index(inplace=True, drop=True)
+    print("Mean magnitude for", str(np.mean(ztf_df['mag'])))
 
 dss_image = SkyView.get_images(position=source_coordinates,survey='DSS',pixels=str(400))
 wcs_dss = WCS(dss_image[0][0].header)
